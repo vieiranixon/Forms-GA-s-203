@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GAs 203">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>GAs 203 · Controle de Selos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#1a1a2e;--surface:#16213e;--card:#0f3460;
+  --accent:#e94560;--accent2:#f5a623;
+  --text:#eaeaea;--muted:#8892a4;--border:#2a3a5c;
+  --input-bg:#0d1b35;--green:#2ecc71;--yellow:#f39c12;--red:#e74c3c;
+  --radius:12px;
+  --touch:52px; /* min touch target */
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;font-size:16px}
+
+/* ── HEADER ── */
+header{
+  background:linear-gradient(135deg,#0f3460,#16213e);
+  border-bottom:2px solid var(--accent);
+  padding:12px 18px;
+  display:flex;align-items:center;justify-content:center;
+  position:sticky;top:0;z-index:100;min-height:70px;
+}
+.header-inner{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;max-width:980px;position:relative}
+.header-icon{width:46px;height:46px;border-radius:10px;flex-shrink:0;position:absolute;left:0}
+.header-text{text-align:center}
+.logo{font-size:1.1rem;font-weight:800;letter-spacing:1.5px;color:var(--accent2)}
+.subtitle{font-size:.72rem;color:var(--muted);margin-top:3px;line-height:1.3}
+@media(max-width:480px){
+  .header-icon{width:38px;height:38px}
+  .logo{font-size:.95rem}
+  .subtitle{font-size:.65rem}
+}
+
+/* ── LAYOUT ── */
+.container{max-width:980px;margin:0 auto;padding:18px 14px 80px}
+.sec{font-size:.68rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone{
+  border:2px dashed var(--border);border-radius:var(--radius);
+  padding:24px 16px;text-align:center;cursor:pointer;
+  transition:all .2s;background:var(--surface);margin-bottom:18px;
+}
+.upload-zone.loaded{border-color:var(--green);background:rgba(46,204,113,.06)}
+.upload-icon{font-size:2rem;margin-bottom:6px}
+.upload-text{color:var(--muted);font-size:.88rem;line-height:1.5}
+.upload-text b{color:var(--text)}
+.upload-text.ok{color:var(--green);font-weight:600}
+#fileInput{display:none}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px;margin-bottom:16px}
+
+/* ── PUMP TABS ── */
+.pump-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:18px}
+.pump-tab{
+  min-height:var(--touch);display:flex;align-items:center;justify-content:center;
+  border-radius:8px;border:1px solid var(--border);background:var(--input-bg);
+  color:var(--muted);cursor:pointer;font-size:.78rem;font-weight:700;
+  transition:all .18s;position:relative;text-align:center;padding:4px 2px;
+}
+.pump-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.pump-tab .cnt{
+  position:absolute;top:-5px;right:-5px;background:var(--accent2);
+  color:#000;font-size:.58rem;font-weight:800;border-radius:20px;
+  padding:1px 5px;min-width:17px;text-align:center;
+}
+
+/* ── FIELDS ── */
+.meta-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column}
+.field label{font-size:.7rem;font-weight:600;letter-spacing:.3px;color:var(--muted);margin-bottom:5px}
+.field label span{color:var(--accent2)}
+.field input,.field select{
+  width:100%;background:var(--input-bg);border:1px solid var(--border);
+  border-radius:8px;padding:0 12px;color:var(--text);
+  font-size:1rem;height:var(--touch);transition:border .2s;
+  -webkit-appearance:none;appearance:none;
+}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892a4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent2)}
+.field input::placeholder{color:#3a4a6a;font-size:.9rem}
+select option{background:#0d1b35}
+
+hr.div{border:none;border-top:1px solid var(--border);margin:14px 0}
+
+/* ── BUTTONS ── */
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.btn{
+  flex:1;min-width:140px;min-height:var(--touch);
+  border-radius:9px;font-weight:700;font-size:.92rem;
+  cursor:pointer;border:none;transition:all .18s;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:active{background:#c73652}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:active{border-color:var(--accent2);color:var(--accent2)}
+.btn-export{background:linear-gradient(135deg,#27ae60,#1e8449);color:#fff}
+.btn-export:active{opacity:.85}
+.btn-danger{background:transparent;color:var(--red);border:1px solid var(--red)}
+.btn-danger:active{background:var(--red);color:#fff}
+
+/* ── BADGES ── */
+.rec-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.badges{display:flex;gap:5px;flex-wrap:wrap}
+.badge{padding:3px 11px;border-radius:20px;font-size:.72rem;font-weight:700}
+.badge-total{background:var(--card);border:1px solid var(--border);color:var(--accent2)}
+.badge-existing{background:rgba(46,204,113,.12);border:1px solid var(--green);color:var(--green)}
+.badge-new{background:rgba(233,69,96,.12);border:1px solid var(--accent);color:var(--accent)}
+
+/* ── FILTER ── */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filter-bar select{
+  background:var(--input-bg);border:1px solid var(--border);
+  border-radius:8px;padding:8px 32px 8px 10px;color:var(--text);
+  font-size:.82rem;-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892a4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+  min-height:38px;
+}
+.filter-bar label{font-size:.72rem;color:var(--muted)}
+
+/* ── TABLE (desktop) / CARDS (mobile) ── */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+thead tr{background:var(--card)}
+th{padding:8px 9px;text-align:left;font-weight:700;color:var(--muted);font-size:.67rem;letter-spacing:.4px;white-space:nowrap}
+td{padding:7px 9px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+tr.row-new td:first-child{border-left:3px solid var(--accent)}
+tr.row-existing td:first-child{border-left:3px solid var(--green)}
+
+/* Mobile record cards */
+.rec-cards{display:none;flex-direction:column;gap:10px}
+.rec-card{background:var(--card);border-radius:10px;padding:13px 14px;border-left:4px solid var(--border)}
+.rec-card.is-new{border-left-color:var(--accent)}
+.rec-card.is-existing{border-left-color:var(--green)}
+.rc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.rc-bomba{font-weight:800;font-size:.95rem}
+.rc-date{font-size:.78rem;color:var(--muted)}
+.rc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 10px;font-size:.76rem;margin-bottom:8px}
+.rc-item span:first-child{color:var(--muted);display:block;font-size:.65rem}
+.rc-foot{display:flex;justify-content:space-between;align-items:center}
+.del-btn{
+  background:rgba(231,76,60,.15);border:1px solid var(--red);
+  color:var(--red);border-radius:7px;padding:6px 14px;
+  font-size:.8rem;font-weight:700;cursor:pointer;min-height:36px;
+}
+.no-del{color:var(--border);font-size:.72rem}
+.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700}
+.tag-op{background:rgba(46,204,113,.15);color:var(--green);border:1px solid var(--green)}
+.tag-stb{background:rgba(243,156,18,.15);color:var(--yellow);border:1px solid var(--yellow)}
+.tag-mnt{background:rgba(231,76,60,.15);color:var(--red);border:1px solid var(--red)}
+.tag-ref{background:rgba(100,149,237,.15);color:#6495ed;border:1px solid #6495ed}
+
+.empty-state{text-align:center;padding:28px;color:var(--muted);font-size:.88rem}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#27ae60;color:#fff;padding:12px 24px;border-radius:10px;
+  font-weight:700;font-size:.88rem;opacity:0;
+  transition:all .3s;pointer-events:none;z-index:9999;
+  white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.4);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:var(--red)}
+
+/* ── SECTION DIVIDER ── */
+.step-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;background:var(--accent);
+  color:#fff;font-size:.72rem;font-weight:800;margin-right:7px;flex-shrink:0;
+}
+.step-row{display:flex;align-items:center;margin-bottom:12px}
+.step-row .sec{margin-bottom:0}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .container{padding:14px 10px 90px}
+  .meta-row{grid-template-columns:1fr 1fr}
+  .fields-grid.three{grid-template-columns:1fr 1fr}
+  /* hide table, show cards */
+  .table-wrap table{display:none}
+  .rec-cards{display:flex}
+  /* buttons full width stack */
+  .actions{flex-direction:column}
+  .btn{min-width:100%;flex:none}
+  /* filter bar */
+  .filter-bar{flex-direction:column;align-items:flex-start}
+  .filter-bar select{width:100%}
+}
+@media(max-width:380px){
+  .pump-tabs{grid-template-columns:repeat(2,1fr)}
+  .fields-grid{grid-template-columns:1fr}
+  .meta-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <img class="header-icon" src="data:image/png;base64,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" alt="Logo">
+    <div class="header-text">
+      <div class="logo">GAs 203</div>
+      <div class="subtitle">Monitoramento e Confiabilidade nos Sistemas de Selagem</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ① UPLOAD -->
+  <div class="step-row"><span class="step-num">1</span><div class="sec">Carregar Planilha Existente</div></div>
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📂</div>
+    <div class="upload-text" id="uploadText">
+      <b>Toque para selecionar</b> a planilha<br>
+      <span style="font-size:.76rem;color:var(--border)">Controle_GAs_203.xlsx</span>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+  </div>
+
+  <!-- ② FORM -->
+  <div class="step-row"><span class="step-num">2</span><div class="sec">Nova Leitura</div></div>
+
+  <div class="pump-tabs" id="pumpTabs">
+    <div class="pump-tab active" data-pump="GA-203A">GA-203A</div>
+    <div class="pump-tab" data-pump="GAT-203B">GAT-203B</div>
+    <div class="pump-tab" data-pump="GAT-203C">GAT-203C</div>
+    <div class="pump-tab" data-pump="GA-203D">GA-203D</div>
+    <div class="pump-tab" data-pump="GA-203E">GA-203E</div>
+    <div class="pump-tab" data-pump="GA-203F">GA-203F</div>
+    <div class="pump-tab" data-pump="GAT-203G">GAT-203G</div>
+    <div class="pump-tab" data-pump="GA-203S">GA-203S</div>
+  </div>
+
+  <div class="card">
+    <div class="meta-row">
+      <div class="field">
+        <label>Data <span>*</span></label>
+        <input type="date" id="fData">
+      </div>
+      <div class="field">
+        <label>Status <span>*</span></label>
+        <select id="fStatus" onchange="onStatusChange(this)">
+          <option value="OPERANDO">OPERANDO</option>
+          <option value="STAND-BY">STAND-BY</option>
+          <option value="MANUTENÇÃO">MANUTENÇÃO</option>
+        </select>
+      </div>
+      <div class="field" id="fieldHora" style="display:none">
+        <label>Hora</label>
+        <input type="time" id="fHora">
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>Observação</label>
+        <input type="text" id="fObs" placeholder="opcional">
+      </div>
+    </div>
+
+    <div id="operatingFields">
+      <hr class="div">
+      <div class="sec" style="margin-bottom:10px">Pressões</div>
+      <div class="fields-grid">
+        <div class="field">
+          <label>Sucção <span>(kgf/cm²)</span></label>
+          <input type="number" id="fPS" step="0.01" inputmode="decimal" placeholder="ex: 1.5">
+        </div>
+        <div class="field">
+          <label>Descarga <span>(kgf/cm²)</span></label>
+          <input type="number" id="fPD" step="0.01" inputmode="decimal" placeholder="ex: 11.0">
+        </div>
+      </div>
+
+      <hr class="div">
+      <div class="sec" style="margin-bottom:10px">Pote de Selagem</div>
+      <div class="fields-grid">
+        <div class="field">
+          <label>Nível Selo LA</label>
+          <select id="fNivelLA"><option>OK</option><option>BAIXO</option><option>ALTO</option></select>
+        </div>
+        <div class="field">
+          <label>Nível Selo LOA</label>
+          <select id="fNivelLOA"><option>OK</option><option>BAIXO</option><option>ALTO</option></select>
+        </div>
+        <div class="field">
+          <label>Pressão Pote LA <span>(kgf/cm²)</span></label>
+          <input type="number" id="fPoteLA" step="0.1" inputmode="decimal" placeholder="ex: 5.5">
+        </div>
+        <div class="field">
+          <label>Pressão Pote LOA <span>(kgf/cm²)</span></label>
+          <input type="number" id="fPoteLOA" step="0.1" inputmode="decimal" placeholder="ex: 6.0">
+        </div>
+      </div>
+
+      <hr class="div">
+      <div class="sec" style="margin-bottom:10px">Reposição de Fluido de Barreira</div>
+      <div class="fields-grid">
+        <div class="field">
+          <label>Reposição LA <span>(lts)</span></label>
+          <input type="number" id="fRepLA" step="0.5" inputmode="decimal" placeholder="vazio = nenhum">
+        </div>
+        <div class="field">
+          <label>Reposição LOA <span>(lts)</span></label>
+          <input type="number" id="fRepLOA" step="0.5" inputmode="decimal" placeholder="vazio = nenhum">
+        </div>
+      </div>
+
+      <hr class="div">
+      <div class="sec" style="margin-bottom:10px">Temperaturas (°C)</div>
+      <div class="fields-grid">
+        <div class="field">
+          <label>Sobreposta Selo LA</label>
+          <input type="number" id="fTsLA" step="1" inputmode="numeric" placeholder="ex: 95">
+        </div>
+        <div class="field">
+          <label>Sobreposta Selo LOA</label>
+          <input type="number" id="fTsLOA" step="1" inputmode="numeric" placeholder="ex: 105">
+        </div>
+        <div class="field">
+          <label>Mancal LA</label>
+          <input type="number" id="fTmLA" step="1" inputmode="numeric" placeholder="ex: 52">
+        </div>
+        <div class="field">
+          <label>Mancal LOA</label>
+          <input type="number" id="fTmLOA" step="1" inputmode="numeric" placeholder="ex: 60">
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="addRecord()">＋ Adicionar Registro</button>
+      <button class="btn btn-secondary" onclick="clearForm()">↺ Limpar</button>
+    </div>
+  </div>
+
+  <!-- ③ TABLE -->
+  <div class="step-row"><span class="step-num">3</span><div class="sec">Visualizar e Exportar</div></div>
+  <div class="card">
+    <div class="rec-header">
+      <div class="badges">
+        <span class="badge badge-total" id="badgeTotal">0 total</span>
+        <span class="badge badge-existing" id="badgeExisting">0 existentes</span>
+        <span class="badge badge-new" id="badgeNew">0 novos</span>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <label>Bomba:</label>
+      <select id="filterPump" onchange="renderTable()">
+        <option value="">Todas</option>
+        <option>GA-203A</option><option>GAT-203B</option><option>GAT-203C</option>
+        <option>GA-203D</option><option>GA-203E</option><option>GA-203F</option>
+        <option>GAT-203G</option><option>GA-203S</option>
+      </select>
+      <label>Status:</label>
+      <select id="filterStatus" onchange="renderTable()">
+        <option value="">Todos</option>
+        <option>OPERANDO</option><option>STAND-BY</option><option>MANUTENÇÃO</option>
+      </select>
+    </div>
+
+    <!-- Desktop table -->
+    <div class="table-wrap">
+      <div class="empty-state" id="emptyState">Carregue a planilha ou adicione registros.</div>
+      <table id="recordsTable" style="display:none">
+        <thead><tr>
+          <th></th><th>Bomba</th><th>Data</th><th>Hora</th>
+          <th>P.Suc</th><th>P.Des</th>
+          <th>NivLA</th><th>NivLOA</th>
+          <th>RepLA</th><th>RepLOA</th>
+          <th>PoteLA</th><th>PoteLOA</th>
+          <th>TsLA</th><th>TsLOA</th>
+          <th>TmLA</th><th>TmLOA</th>
+          <th>Status</th><th>Obs</th><th></th>
+        </tr></thead>
+        <tbody id="recordsBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Mobile cards -->
+    <div class="rec-cards" id="recCards"></div>
+
+    <div class="actions" style="margin-top:16px">
+      <button class="btn btn-export" onclick="exportXLSX()">⬇ Salvar Excel (.xlsx)</button>
+      <button class="btn btn-danger" onclick="clearNewOnly()">🗑 Remover novos</button>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────
+let allRecords = [];
+let workbook = null;
+let currentPump = 'GA-203A';
+const HOUR_PUMPS = new Set(['GAT-203G']);
+
+// ── DATE UTILS ────────────────────────────────────────────────────
+function excelSerialToDate(serial) {
+  if (!serial && serial !== 0) return '';
+  const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+  const y=d.getUTCFullYear(), m=String(d.getUTCMonth()+1).padStart(2,'0'), day=String(d.getUTCDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function dateToExcelSerial(str) {
+  if (!str) return '';
+  const [y,m,d]=str.split('-').map(Number);
+  return Math.round((Date.UTC(y,m-1,d)/86400000)+25569);
+}
+function excelTimeToStr(frac) {
+  if (frac===''||frac==null) return '';
+  const totalMin=Math.round(frac*1440);
+  return `${String(Math.floor(totalMin/60)).padStart(2,'0')}:${String(totalMin%60).padStart(2,'0')}`;
+}
+function strToExcelTime(str) {
+  if (!str) return '';
+  const [h,m]=str.split(':').map(Number);
+  return (h*60+m)/1440;
+}
+
+// ── FILE UPLOAD ───────────────────────────────────────────────────
+const uploadZone=document.getElementById('uploadZone');
+const fileInput=document.getElementById('fileInput');
+uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.style.borderColor='var(--accent2)'});
+uploadZone.addEventListener('dragleave',()=>uploadZone.style.borderColor='');
+uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.style.borderColor='';handleFile(e.dataTransfer.files[0])});
+fileInput.addEventListener('change',()=>handleFile(fileInput.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      workbook=XLSX.read(e.target.result,{type:'array',cellDates:false});
+      allRecords=parseWorkbook(workbook);
+      uploadZone.classList.add('loaded');
+      document.getElementById('uploadText').innerHTML=`<span class="ok">✓ ${file.name}<br>${allRecords.length} registros carregados</span>`;
+      updatePumpCounts();
+      renderTable();
+      showToast(`${allRecords.length} registros carregados`);
+    } catch(err) { showToast('Erro: '+err.message,true); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── PARSE WORKBOOK ────────────────────────────────────────────────
+function parseWorkbook(wb) {
+  const records=[];
+  wb.SheetNames.forEach(sheetName=>{
+    const ws=wb.Sheets[sheetName];
+    const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const hasHora=sheetName.includes('203G');
+    let currentBomba=null, inBlock=false, skipNext=false;
+    for (let r=0;r<aoa.length;r++) {
+      const row=aoa[r];
+      const c0=String(row[0]||'').trim();
+      if (/^GA[T]?-203[A-H]/i.test(c0)) { currentBomba=c0; inBlock=true; skipNext=true; continue; }
+      if (skipNext) { skipNext=false; continue; }
+      if (!inBlock||!currentBomba) continue;
+      if (row.every(v=>v===''||v==null)) { inBlock=false; currentBomba=null; continue; }
+      let ci=0;
+      const rawDate=row[ci++];
+      let hora='';
+      if (hasHora) { hora=excelTimeToStr(row[ci++]); }
+      const ps=row[ci++], pd=row[ci++];
+      const nLA=row[ci++], nLOA=row[ci++];
+      const repLA=row[ci++], repLOA=row[ci++];
+      const poteLA=row[ci++], poteLOA=row[ci++];
+      const tsLA=row[ci++], tsLOA=row[ci++];
+      const tmLA=row[ci++], tmLOA=row[ci++];
+      const status=String(row[ci++]||'').trim();
+      const obs=String(row[ci]||'').trim();
+      const dateStr=typeof rawDate==='number'?excelSerialToDate(rawDate):String(rawDate).trim();
+      if (!dateStr) continue;
+      records.push({bomba:currentBomba,sheetName,data:dateStr,hora,ps,pd,
+        nivelLA:String(nLA||'OK').trim(),nivelLOA:String(nLOA||'OK').trim(),
+        repLA,repLOA,poteLA,poteLOA,tsLA,tsLOA,tmLA,tmLOA,
+        status,obs,isNew:false,_rawDate:rawDate});
+    }
+  });
+  return records;
+}
+
+// ── PUMP TABS ─────────────────────────────────────────────────────
+document.querySelectorAll('.pump-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.pump-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    currentPump=tab.dataset.pump;
+    document.getElementById('fieldHora').style.display=HOUR_PUMPS.has(currentPump)?'block':'none';
+  });
+});
+function updatePumpCounts() {
+  const counts={};
+  allRecords.filter(r=>r.isNew).forEach(r=>{counts[r.bomba]=(counts[r.bomba]||0)+1});
+  document.querySelectorAll('.pump-tab').forEach(tab=>{
+    const old=tab.querySelector('.cnt'); if(old)old.remove();
+    const n=counts[tab.dataset.pump]||0;
+    if(n>0){const s=document.createElement('span');s.className='cnt';s.textContent=n;tab.appendChild(s);}
+  });
+}
+
+// ── STATUS TOGGLE ─────────────────────────────────────────────────
+function onStatusChange(sel) {
+  document.getElementById('operatingFields').style.display=sel.value==='OPERANDO'?'block':'none';
+}
+onStatusChange(document.getElementById('fStatus'));
+document.getElementById('fData').valueAsDate=new Date();
+
+// ── FORM HELPERS ──────────────────────────────────────────────────
+function gv(id){return document.getElementById(id)?.value.trim()||''}
+function gn(id){const v=gv(id);if(v===''||v==='-')return ' - ';const n=parseFloat(v);return isNaN(n)?' - ':n}
+function clearForm(){
+  ['fPS','fPD','fPoteLA','fPoteLOA','fRepLA','fRepLOA','fTsLA','fTsLOA','fTmLA','fTmLOA','fObs','fHora']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('fNivelLA').value='OK';
+  document.getElementById('fNivelLOA').value='OK';
+  document.getElementById('fStatus').value='OPERANDO';
+  onStatusChange(document.getElementById('fStatus'));
+}
+
+// ── ADD RECORD ────────────────────────────────────────────────────
+function addRecord(){
+  const dateStr=gv('fData');
+  if(!dateStr){showToast('Informe a data!',true);return;}
+  const status=gv('fStatus'), isOp=status==='OPERANDO';
+  const rec={
+    bomba:currentPump,
+    sheetName:HOUR_PUMPS.has(currentPump)?"GAT-203G (Primeiro dia)":"Q3_GA's 203",
+    data:dateStr, hora:HOUR_PUMPS.has(currentPump)?gv('fHora'):'',
+    ps:isOp?gn('fPS'):' - ', pd:isOp?gn('fPD'):' - ',
+    nivelLA:gv('fNivelLA'), nivelLOA:gv('fNivelLOA'),
+    repLA:isOp?gn('fRepLA'):' - ', repLOA:isOp?gn('fRepLOA'):' - ',
+    poteLA:isOp?gn('fPoteLA'):' - ', poteLOA:isOp?gn('fPoteLOA'):' - ',
+    tsLA:isOp?gn('fTsLA'):'', tsLOA:isOp?gn('fTsLOA'):'',
+    tmLA:isOp?gn('fTmLA'):'', tmLOA:isOp?gn('fTmLOA'):'',
+    status, obs:gv('fObs'), isNew:true, _rawDate:dateToExcelSerial(dateStr)
+  };
+  allRecords.push(rec);
+  updatePumpCounts();
+  renderTable();
+  clearForm();
+  showToast('Registro adicionado!');
+  // scroll to table on mobile
+  document.querySelector('.rec-cards')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── DELETE ────────────────────────────────────────────────────────
+function deleteRecord(idx){
+  if(!allRecords[idx].isNew)return;
+  allRecords.splice(idx,1);
+  updatePumpCounts();
+  renderTable();
+  showToast('Registro removido.');
+}
+function clearNewOnly(){
+  const n=allRecords.filter(r=>r.isNew).length;
+  if(!n)return;
+  if(!confirm(`Remover ${n} registro(s) novo(s)?`))return;
+  allRecords=allRecords.filter(r=>!r.isNew);
+  updatePumpCounts();
+  renderTable();
+  showToast('Novos registros removidos.');
+}
+
+// ── RENDER ────────────────────────────────────────────────────────
+function fmtDate(str){if(!str)return'';const[y,m,d]=str.split('-');return`${d}/${m}/${y}`}
+function fmtN(v){return(v===''||v==null)?'—':v}
+function tagStatus(s){
+  const s2=String(s||'').toUpperCase();
+  const cls=s2.includes('OPER')?'tag-op':s2.includes('STAND')?'tag-stb':s2.includes('MAN')?'tag-mnt':'tag-ref';
+  return`<span class="tag ${cls}">${s||'—'}</span>`;
+}
+
+function renderTable(){
+  const fp=document.getElementById('filterPump').value;
+  const fs=document.getElementById('filterStatus').value;
+  const visible=allRecords.map((r,i)=>({r,i}))
+    .filter(({r})=>(!fp||r.bomba===fp)&&(!fs||(r.status||'').includes(fs)));
+
+  const total=allRecords.length, existing=allRecords.filter(r=>!r.isNew).length, isNew=allRecords.filter(r=>r.isNew).length;
+  document.getElementById('badgeTotal').textContent=`${total} total`;
+  document.getElementById('badgeExisting').textContent=`${existing} existentes`;
+  document.getElementById('badgeNew').textContent=`${isNew} novos`;
+
+  const table=document.getElementById('recordsTable');
+  const empty=document.getElementById('emptyState');
+  const cards=document.getElementById('recCards');
+
+  if(!visible.length){
+    table.style.display='none'; cards.innerHTML=''; empty.style.display='block';
+    empty.textContent=total?'Nenhum registro para esse filtro.':'Carregue a planilha ou adicione registros.';
+    return;
+  }
+  table.style.display='table'; empty.style.display='none';
+
+  // Desktop table
+  document.getElementById('recordsBody').innerHTML=visible.map(({r,i})=>`
+    <tr class="${r.isNew?'row-new':'row-existing'}">
+      <td><span style="font-size:.63rem;color:${r.isNew?'var(--accent)':'var(--green)'}">${r.isNew?'NOVO':'✓'}</span></td>
+      <td><b>${r.bomba}</b></td><td>${fmtDate(r.data)}</td><td>${r.hora||'—'}</td>
+      <td>${fmtN(r.ps)}</td><td>${fmtN(r.pd)}</td>
+      <td>${r.nivelLA}</td><td>${r.nivelLOA}</td>
+      <td>${fmtN(r.repLA)}</td><td>${fmtN(r.repLOA)}</td>
+      <td>${fmtN(r.poteLA)}</td><td>${fmtN(r.poteLOA)}</td>
+      <td>${fmtN(r.tsLA)}</td><td>${fmtN(r.tsLOA)}</td>
+      <td>${fmtN(r.tmLA)}</td><td>${fmtN(r.tmLOA)}</td>
+      <td>${tagStatus(r.status)}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${r.obs||''}">${r.obs||''}</td>
+      <td>${r.isNew?`<button class="del-btn" onclick="deleteRecord(${i})">✕</button>`:'<span class="no-del">—</span>'}</td>
+    </tr>`).join('');
+
+  // Mobile cards
+  cards.innerHTML=visible.map(({r,i})=>`
+    <div class="rec-card ${r.isNew?'is-new':'is-existing'}">
+      <div class="rc-head">
+        <div>
+          <div class="rc-bomba">${r.bomba} <span style="font-size:.68rem;font-weight:400;color:${r.isNew?'var(--accent)':'var(--green)'}">${r.isNew?'● NOVO':'● existente'}</span></div>
+          <div class="rc-date">${fmtDate(r.data)}${r.hora?' · '+r.hora:''}</div>
+        </div>
+        ${tagStatus(r.status)}
+      </div>
+      <div class="rc-grid">
+        <div class="rc-item"><span>P. Sucção</span>${fmtN(r.ps)}</div>
+        <div class="rc-item"><span>P. Descarga</span>${fmtN(r.pd)}</div>
+        <div class="rc-item"><span>Nível LA</span>${r.nivelLA}</div>
+        <div class="rc-item"><span>Nível LOA</span>${r.nivelLOA}</div>
+        <div class="rc-item"><span>Pote LA</span>${fmtN(r.poteLA)}</div>
+        <div class="rc-item"><span>Pote LOA</span>${fmtN(r.poteLOA)}</div>
+        <div class="rc-item"><span>TsLA °C</span>${fmtN(r.tsLA)}</div>
+        <div class="rc-item"><span>TsLOA °C</span>${fmtN(r.tsLOA)}</div>
+        <div class="rc-item"><span>TmLA °C</span>${fmtN(r.tmLA)}</div>
+      </div>
+      ${r.obs?`<div style="font-size:.75rem;color:var(--muted);margin-bottom:6px">📝 ${r.obs}</div>`:''}
+      <div class="rc-foot">
+        <span style="font-size:.7rem;color:var(--muted)">Rep: LA ${fmtN(r.repLA)} / LOA ${fmtN(r.repLOA)}</span>
+        ${r.isNew?`<button class="del-btn" onclick="deleteRecord(${i})">✕ Remover</button>`:'<span class="no-del">—</span>'}
+      </div>
+    </div>`).join('');
+}
+
+// ── EXPORT (preserva formatação do workbook original) ─────────────
+function exportXLSX(){
+  if(!allRecords.length){showToast('Sem dados para exportar!',true);return;}
+  if(!workbook){showToast('Carregue a planilha primeiro!',true);return;}
+
+  const newRecs=allRecords.filter(r=>r.isNew);
+  if(!newRecs.length){showToast('Nenhum registro novo para adicionar!',true);return;}
+
+  // Trabalha em cima do workbook original
+  const wb2=workbook;
+
+  newRecs.forEach(rec=>{
+    const sheetName=rec.sheetName||"Q3_GA's 203";
+    const ws=wb2.Sheets[sheetName];
+    if(!ws){showToast(`Aba "${sheetName}" não encontrada!`,true);return;}
+
+    const hasHora=sheetName.includes('203G');
+    const range=XLSX.utils.decode_range(ws['!ref']||'A1');
+
+    // Encontra o bloco da bomba: procura a linha do cabeçalho da bomba
+    // e depois a primeira linha vazia após os dados (onde inserir)
+    let insertRow=-1;
+    for(let R=range.s.r; R<=range.e.r; R++){
+      const cell=ws[XLSX.utils.encode_cell({r:R,c:0})];
+      const val=cell?String(cell.v||'').trim():'';
+      if(val===rec.bomba){
+        // Encontrou o bloco. Agora procura a próxima linha vazia após os dados
+        let dataStart=R+2; // pula cabeçalho + unidades
+        for(let DR=dataStart; DR<=range.e.r+1; DR++){
+          const dc=ws[XLSX.utils.encode_cell({r:DR,c:0})];
+          const dv=dc?String(dc.v||'').trim():'';
+          // Linha vazia OU início de próximo bloco = ponto de inserção
+          if(!dv || /^GA[T]?-203/i.test(dv)){
+            insertRow=DR;
+            break;
+          }
+        }
+        break;
+      }
+    }
+
+    if(insertRow===-1){
+      // Bomba não existe na aba: adiciona no final
+      insertRow=range.e.r+2;
+    }
+
+    // Insere a nova linha deslocando as existentes para baixo
+    // SheetJS não tem insert-row nativo: reconstruímos o sheet deslocando
+    const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+
+    const [yy,mm,dd]=rec.data.split('-'); const dv=`${dd}/${mm}/${yy.slice(2)}`;
+    let newRow;
+    if(hasHora){
+      newRow=[dv, rec.hora?strToExcelTime(rec.hora):'', rec.ps, rec.pd,
+              rec.nivelLA, rec.nivelLOA, rec.repLA, rec.repLOA,
+              rec.poteLA, rec.poteLOA, rec.tsLA, rec.tsLOA, rec.tmLA, rec.tmLOA, rec.obs||''];
+    } else {
+      newRow=[dv, rec.ps, rec.pd, rec.nivelLA, rec.nivelLOA,
+              rec.repLA, rec.repLOA, rec.poteLA, rec.poteLOA,
+              rec.tsLA, rec.tsLOA, rec.tmLA, rec.tmLOA, rec.status, rec.obs||''];
+    }
+
+    aoa.splice(insertRow, 0, newRow);
+
+    // Reconstrói o worksheet preservando o !cols original
+    const colInfo=ws['!cols'];
+    const merges=ws['!merges'];
+    const newWs=XLSX.utils.aoa_to_sheet(aoa);
+    if(colInfo) newWs['!cols']=colInfo;
+    if(merges)  newWs['!merges']=merges;
+    wb2.Sheets[sheetName]=newWs;
+  });
+
+  const now=new Date();
+  const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(wb2,`Controle_GAs_203_${stamp}.xlsx`);
+  showToast('Arquivo exportado com formatação original!');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────
+let _tt;
+function showToast(msg,err=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show'+(err?' err':'');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.className='',2800);
+}
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(r => console.log('SW registered'))
+      .catch(e => console.log('SW error', e));
+  });
+}
+</script>
+</body>
+</html>
