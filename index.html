@@ -559,6 +559,12 @@ function addRecord(){
   renderTable();
   clearForm();
   showToast('Registro adicionado!');
+  // Notifica o dashboard em outras abas/janelas
+  try {
+    const ch = new BroadcastChannel('ga203_sync');
+    ch.postMessage({ type: 'new_record', bomba: rec.bomba, data: rec.data });
+    ch.close();
+  } catch(e) {}
   // scroll to table on mobile
   document.querySelector('.rec-cards')?.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
