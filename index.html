@@ -559,12 +559,63 @@ function addRecord(){
   renderTable();
   clearForm();
   showToast('Registro adicionado!');
-  // Notifica o dashboard em outras abas/janelas
+  // Grava no IndexedDB do dashboard e notifica
   try {
-    const ch = new BroadcastChannel('ga203_sync');
-    ch.postMessage({ type: 'new_record', bomba: rec.bomba, data: rec.data });
-    ch.close();
-  } catch(e) {}
+    const IDB_NAME = 'GA203Dashboard';
+    const IDB_STORE = 'dados';
+    const sf = v => {
+      if (v === null || v === undefined || v === '' || v === ' - ') return null;
+      const f = parseFloat(v);
+      return isNaN(f) || f <= 0 ? null : f;
+    };
+    const statusStr = String(rec.status || '').toLowerCase();
+    const estado = (statusStr.includes('stand') || statusStr.includes('stb'))
+      ? 'stand-by'
+      : (statusStr.includes('manu') || statusStr.includes('mnt'))
+      ? 'manutenção'
+      : 'operação';
+    const novoRegistro = {
+      data: rec.data,
+      pressao_succao:   sf(rec.ps),
+      pressao_descarga: sf(rec.pd),
+      pressao_pote_la:  sf(rec.poteLA),
+      pressao_pote_loa: sf(rec.poteLOA),
+      temp_selo_la:     sf(rec.tsLA),
+      temp_selo_loa:    sf(rec.tsLOA),
+      temp_mancal_la:   sf(rec.tmLA),
+      temp_mancal_loa:  sf(rec.tmLOA),
+      estado
+    };
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      const getReq = store.get('main');
+      getReq.onsuccess = () => {
+        let dadosAtuais = {};
+        if (getReq.result) {
+          try { dadosAtuais = JSON.parse(getReq.result.data); } catch(e2) {}
+        }
+        if (!dadosAtuais[rec.bomba]) dadosAtuais[rec.bomba] = [];
+        dadosAtuais[rec.bomba].push(novoRegistro);
+        store.put({ id: 'main', data: JSON.stringify(dadosAtuais), salvo: new Date().toISOString() });
+        tx.oncomplete = () => {
+          try {
+            const ch = new BroadcastChannel('ga203_sync');
+            ch.postMessage({ type: 'new_record', bomba: rec.bomba, data: rec.data });
+            ch.close();
+          } catch(e3) {}
+        };
+      };
+    };
+    req.onupgradeneeded = e2 => {
+      const db2 = e2.target.result;
+      if (!db2.objectStoreNames.contains(IDB_STORE)) {
+        db2.createObjectStore(IDB_STORE, { keyPath: 'id' });
+      }
+    };
+  } catch(e) { console.warn('Sync IDB formulário:', e); }
   // scroll to table on mobile
   document.querySelector('.rec-cards')?.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
