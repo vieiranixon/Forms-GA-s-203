@@ -601,11 +601,16 @@ function addRecord(){
         dadosAtuais[rec.bomba].push(novoRegistro);
         store.put({ id: 'main', data: JSON.stringify(dadosAtuais), salvo: new Date().toISOString() });
         tx.oncomplete = () => {
+          // Notifica via BroadcastChannel (Chrome/Firefox) e localStorage (Safari/iOS)
           try {
             const ch = new BroadcastChannel('ga203_sync');
             ch.postMessage({ type: 'new_record', bomba: rec.bomba, data: rec.data });
             ch.close();
           } catch(e3) {}
+          // Fallback para Safari/iOS que não suporta BroadcastChannel
+          try {
+            localStorage.setItem('ga203_sync_ts', new Date().toISOString());
+          } catch(e4) {}
         };
       };
     };
